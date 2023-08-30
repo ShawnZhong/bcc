@@ -75,12 +75,6 @@ bpf_text = """
 #endif
 #include <linux/nfs_fs.h>
 
-#define TRACE_READ 0
-#define TRACE_WRITE 1
-#define TRACE_OPEN 2
-#define TRACE_GETATTR 3
-#define TRACE_COMMIT 4
-
 struct val_t {
     u64 ts;
     u64 offset;
@@ -97,7 +91,7 @@ struct commit_t {
 struct data_t {
     // XXX: switch some to u32's when supported
     u64 ts_us;
-    u64 type;
+    char type;  // R (read), W (write), O (open), G (getattr), C (commit)
     u64 size;
     u64 offset;
     u64 delta_us;
@@ -173,7 +167,7 @@ int trace_getattr_entry(struct pt_regs *ctx, struct vfsmount *mnt,
     return 0;
 }
 
-static int trace_exit(struct pt_regs *ctx, int type)
+static int trace_exit(struct pt_regs *ctx, char type)
 {
     struct val_t *valp;
     u64 id = bpf_get_current_pid_tgid();
@@ -207,7 +201,7 @@ static int trace_exit(struct pt_regs *ctx, int type)
     // workaround (rewriter should handle file to d_name in one step):
     struct dentry *de = NULL;
     struct qstr qs = {};
-    if(type == TRACE_GETATTR)
+    if (type == 'G')
     {
         bpf_probe_read_kernel(&de,sizeof(de), &valp->d);
     }
@@ -228,22 +222,22 @@ static int trace_exit(struct pt_regs *ctx, int type)
 
 int trace_file_open_return(struct pt_regs *ctx)
 {
-    return trace_exit(ctx, TRACE_OPEN);
+    return trace_exit(ctx, 'O');
 }
 
 int trace_read_return(struct pt_regs *ctx)
 {
-    return trace_exit(ctx, TRACE_READ);
+    return trace_exit(ctx, 'R');
 }
 
 int trace_write_return(struct pt_regs *ctx)
 {
-    return trace_exit(ctx, TRACE_WRITE);
+    return trace_exit(ctx, 'W');
 }
 
 int trace_getattr_return(struct pt_regs *ctx)
 {
-    return trace_exit(ctx, TRACE_GETATTR);
+    return trace_exit(ctx, 'G');
 }
 
 static int trace_initiate_commit(struct nfs_commit_data *cd)
@@ -285,7 +279,7 @@ RAW_TRACEPOINT_PROBE(nfs_commit_done)
         u32 pid = bpf_get_current_pid_tgid() >> 32;
 
         struct data_t data = {};
-        data.type = TRACE_COMMIT;
+        data.type = 'C';
         data.offset = cp->offset;
         data.size = cp->count;
         data.ts_us = ts/1000;
@@ -335,7 +329,7 @@ int trace_nfs_commit_done(struct pt_regs *ctx, void *task, void *calldata)
         u32 pid = bpf_get_current_pid_tgid() >> 32;
 
         struct data_t data = {};
-        data.type = TRACE_COMMIT;
+        data.type = 'C';
         data.offset = cp->offset;
         data.size = cp->count;
         data.ts_us = ts/1000;
@@ -386,16 +380,7 @@ if debug or args.ebpf:
 # process event
 def print_event(cpu, data, size):
     event = b["events"].event(data)
-
-    type = 'R'
-    if event.type == 1:
-        type = 'W'
-    elif event.type == 2:
-        type = 'O'
-    elif event.type == 3:
-        type = 'G'
-    elif event.type == 4:
-        type = 'C'
+    type = event.type.decode('utf-8', 'replace')
 
     if(csv):
         print("%d,%s,%d,%s,%d,%d,%d,%s" % (

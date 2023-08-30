@@ -65,12 +65,6 @@ bpf_text = """
 #include <linux/sched.h>
 #include <linux/dcache.h>
 
-// XXX: switch these to char's when supported
-#define TRACE_READ      0
-#define TRACE_WRITE     1
-#define TRACE_OPEN      2
-#define TRACE_FSYNC     3
-
 struct val_t {
     u64 ts;
     u64 offset;
@@ -80,7 +74,7 @@ struct val_t {
 struct data_t {
     // XXX: switch some to u32's when supported
     u64 ts_us;
-    u64 type;
+    char type;  // R (read), W (write), O (open), S (fsync)
     u32 size;
     u64 offset;
     u64 delta_us;
@@ -162,7 +156,7 @@ int trace_fsync_entry(struct pt_regs *ctx, struct file *filp)
 // Output
 //
 
-static int trace_return(struct pt_regs *ctx, int type)
+static int trace_return(struct pt_regs *ctx, char type)
 {
     struct val_t *valp;
     u64 id = bpf_get_current_pid_tgid();
@@ -204,22 +198,22 @@ static int trace_return(struct pt_regs *ctx, int type)
 
 int trace_read_return(struct pt_regs *ctx)
 {
-    return trace_return(ctx, TRACE_READ);
+    return trace_return(ctx, 'R');
 }
 
 int trace_write_return(struct pt_regs *ctx)
 {
-    return trace_return(ctx, TRACE_WRITE);
+    return trace_return(ctx, 'W');
 }
 
 int trace_open_return(struct pt_regs *ctx)
 {
-    return trace_return(ctx, TRACE_OPEN);
+    return trace_return(ctx, 'O');
 }
 
 int trace_fsync_return(struct pt_regs *ctx)
 {
-    return trace_return(ctx, TRACE_FSYNC);
+    return trace_return(ctx, 'S');
 }
 
 """
@@ -240,14 +234,7 @@ if debug or args.ebpf:
 # process event
 def print_event(cpu, data, size):
     event = b["events"].event(data)
-
-    type = 'R'
-    if event.type == 1:
-        type = 'W'
-    elif event.type == 2:
-        type = 'O'
-    elif event.type == 3:
-        type = 'S'
+    type = event.type.decode('utf-8', 'replace')
 
     if (csv):
         print("%d,%s,%d,%s,%d,%d,%d,%s" % (
