@@ -9,7 +9,7 @@ LIBBPF_SRC := $(abspath ../src/cc/libbpf/src)
 LIBBPF_OBJ := $(abspath $(OUTPUT)/libbpf.a)
 LIBBLAZESYM_SRC := $(abspath blazesym/target/release/libblazesym.a)
 INCLUDES := -I$(OUTPUT) -I../src/cc/libbpf/include/uapi
-CFLAGS := -g -O2 -Wall
+CFLAGS := -g -O2 -Wall -Wmissing-field-initializers -Werror
 BPFCFLAGS := -g -O2 -Wall
 INSTALL ?= install
 prefix ?= /usr/local
@@ -80,6 +80,7 @@ APPS = \
 	softirqs \
 	solisten \
 	statsnoop \
+	syncsnoop \
 	syscount \
 	tcptracer \
 	tcpconnect \
@@ -98,8 +99,8 @@ APPS = \
 # export variables that are used in Makefile.btfgen as well.
 export OUTPUT BPFTOOL ARCH BTFHUB_ARCHIVE APPS
 
-FSDIST_ALIASES = btrfsdist ext4dist nfsdist xfsdist f2fsdist
-FSSLOWER_ALIASES = btrfsslower ext4slower nfsslower xfsslower f2fsslower
+FSDIST_ALIASES = btrfsdist ext4dist nfsdist xfsdist f2fsdist bcachefsdist
+FSSLOWER_ALIASES = btrfsslower ext4slower nfsslower xfsslower f2fsslower bcachefsslower
 SIGSNOOP_ALIAS = killsnoop
 APP_ALIASES = $(FSDIST_ALIASES) $(FSSLOWER_ALIASES) ${SIGSNOOP_ALIAS}
 

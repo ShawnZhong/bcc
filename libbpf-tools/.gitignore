@@ -1,6 +1,8 @@
 /.output
 /btfhub-archive
 /bashreadline
+/bcachefsdist
+/bcachefsslower
 /bindsnoop
 /biolatency
 /biopattern
@@ -53,6 +55,7 @@
 /softirqs
 /solisten
 /statsnoop
+/syncsnoop
 /syscount
 /tcpconnect
 /tcpconnlat

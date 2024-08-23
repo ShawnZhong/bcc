@@ -62,23 +62,23 @@ const char argp_program_doc[] =
 #define OPT_STATE			3 /* --state */
 
 static const struct argp_option opts[] = {
-	{ "pid", 'p', "PID", 0, "Trace this PID only" },
-	{ "tid", 't', "TID", 0, "Trace this TID only" },
+	{ "pid", 'p', "PID", 0, "Trace this PID only", 0 },
+	{ "tid", 't', "TID", 0, "Trace this TID only", 0 },
 	{ "user-threads-only", 'u', NULL, 0,
-	  "User threads only (no kernel threads)" },
+	  "User threads only (no kernel threads)", 0 },
 	{ "kernel-threads-only", 'k', NULL, 0,
-	  "Kernel threads only (no user threads)" },
+	  "Kernel threads only (no user threads)", 0 },
 	{ "perf-max-stack-depth", OPT_PERF_MAX_STACK_DEPTH,
-	  "PERF-MAX-STACK-DEPTH", 0, "the limit for both kernel and user stack traces (default 127)" },
+	  "PERF-MAX-STACK-DEPTH", 0, "the limit for both kernel and user stack traces (default 127)", 0 },
 	{ "stack-storage-size", OPT_STACK_STORAGE_SIZE, "STACK-STORAGE-SIZE", 0,
-	  "the number of unique stack traces that can be stored and displayed (default 1024)" },
+	  "the number of unique stack traces that can be stored and displayed (default 1024)", 0 },
 	{ "min-block-time", 'm', "MIN-BLOCK-TIME", 0,
-	  "the amount of time in microseconds over which we store traces (default 1)" },
+	  "the amount of time in microseconds over which we store traces (default 1)", 0 },
 	{ "max-block-time", 'M', "MAX-BLOCK-TIME", 0,
-	  "the amount of time in microseconds under which we store traces (default U64_MAX)" },
-	{ "state", OPT_STATE, "STATE", 0, "filter on this thread state bitmask (eg, 2 == TASK_UNINTERRUPTIBLE) see include/linux/sched.h" },
-	{ "verbose", 'v', NULL, 0, "Verbose debug output" },
-	{ NULL, 'h', NULL, OPTION_HIDDEN, "Show the full help" },
+	  "the amount of time in microseconds under which we store traces (default U64_MAX)", 0 },
+	{ "state", OPT_STATE, "STATE", 0, "filter on this thread state bitmask (eg, 2 == TASK_UNINTERRUPTIBLE) see include/linux/sched.h", 0 },
+	{ "verbose", 'v', NULL, 0, "Verbose debug output", 0 },
+	{ NULL, 'h', NULL, OPTION_HIDDEN, "Show the full help", 0 },
 	{},
 };
 
@@ -195,8 +195,7 @@ static void print_map(struct ksyms *ksyms, struct syms_cache *syms_cache,
 	int err, i, ifd, sfd;
 	unsigned long *ip;
 	struct val_t val;
-	char *dso_name;
-	unsigned long dso_offset;
+	struct sym_info sinfo;
 	int idx;
 
 	ip = calloc(env.perf_max_stack_depth, sizeof(*ip));
@@ -262,14 +261,13 @@ print_ustack:
 				else
 					printf("    [unknown]\n");
 			} else {
-				dso_name = NULL;
-				dso_offset = 0;
-				sym = syms__map_addr_dso(syms, ip[i], &dso_name, &dso_offset);
 				printf("    #%-2d 0x%016lx", idx++, ip[i]);
-				if (sym)
-					printf(" %s+0x%lx", sym->name, sym->offset);
-				if (dso_name)
-					printf(" (%s+0x%lx)", dso_name, dso_offset);
+				err = syms__map_addr_dso(syms, ip[i], &sinfo);
+				if (err == 0) {
+					if (sinfo.sym_name)
+						printf(" %s+0x%lx", sinfo.sym_name, sinfo.sym_offset);
+					printf(" (%s+0x%lx)", sinfo.dso_name, sinfo.dso_offset);
+				}
 				printf("\n");
 			}
 		}
@@ -351,6 +349,11 @@ int main(int argc, char **argv)
 
 	signal(SIGINT, sig_handler);
 
+	printf("Tracing off-CPU time (us)");
+	if (env.duration < 99999999)
+		printf(" for %d secs.\n", env.duration);
+	else
+		printf("... Hit Ctrl-C to end.\n");
 	/*
 	 * We'll get sleep interrupted when someone presses Ctrl-C (which will
 	 * be "handled" with noop by sig_handler).

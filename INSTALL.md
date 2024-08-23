@@ -283,7 +283,7 @@ sudo docker run --rm -it --privileged \
 ### Install dependencies
 The compiling depends on the headers and lib of linux kernel module which was not found in wsl distribution packages repo. We have to compile the kernel module manually.
 ```bash
-apt-get install flex bison libssl-dev libelf-dev dwarves
+apt-get install flex bison libssl-dev libelf-dev dwarves bc
 ```
 ### Install packages
 
@@ -391,6 +391,11 @@ sudo apt install -y zip bison build-essential cmake flex git libedit-dev \
 sudo apt install -y zip bison build-essential cmake flex git libedit-dev \
   libllvm15 llvm-15-dev libclang-15-dev python3 zlib1g-dev libelf-dev libfl-dev python3-setuptools \
   liblzma-dev libdebuginfod-dev arping netperf iperf libpolly-15-dev
+
+# For Mantic Minotaur (23.10)
+sudo apt install -y zip bison build-essential cmake flex git libedit-dev \
+  libllvm16 llvm-16-dev libclang-16-dev python3 zlib1g-dev libelf-dev libfl-dev python3-setuptools \
+  liblzma-dev libdebuginfod-dev arping netperf iperf libpolly-16-dev
 
 # For other versions
 sudo apt-get -y install zip bison build-essential cmake flex git libedit-dev \
